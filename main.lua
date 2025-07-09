@@ -1,8 +1,6 @@
--- Rayfield GUI Loader
+-- main.lua (online loader)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/ranggadyexe/roblox-script/main/Rayfield.lua"))()
 
--- Load semua modules
-local baseURL = "https://raw.githubusercontent.com/ranggadyexe/roblox-script/main/modules/"
 local modules = {
     "fly",
     "speedwalk",
@@ -14,14 +12,13 @@ local modules = {
 }
 
 for _, name in ipairs(modules) do
-    local url = baseURL .. name .. ".lua"
-    local success, err = pcall(function()
+    local url = ("https://raw.githubusercontent.com/ranggadyexe/roblox-script/main/modules/%s.lua"):format(name)
+    local ok, err = pcall(function()
         loadstring(game:HttpGet(url))()
     end)
-    if not success then
-        warn("Gagal load module:", name, "Error:", err)
+    if not ok then
+        warn("Gagal load module:", name, err)
     end
 end
 
--- Load GUI terakhir
 loadstring(game:HttpGet("https://raw.githubusercontent.com/ranggadyexe/roblox-script/main/gui/gui.lua"))()
