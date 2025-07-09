@@ -1,57 +1,51 @@
--- modules/speedwalk.lua
--- Speedwalk pribadi toggleable dengan input kecepatan
+-- SpeedWalk Module
 
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
 
--- Variabel kontrol
-local isSpeedEnabled = false
-local desiredSpeed = 16 -- default speed roblox
+local speedEnabled = false
+local speedValue = 16  -- Default Roblox WalkSpeed
 
-local function updateHumanoid()
-	character = player.Character or player.CharacterAdded:Wait()
-	humanoid = character:FindFirstChildOfClass("Humanoid")
-end
-
-local function enableSpeed()
-	if isSpeedEnabled then return end
-	isSpeedEnabled = true
-
-	-- Pastikan humanoid masih valid
-	updateHumanoid()
-	if humanoid then
-		humanoid.WalkSpeed = desiredSpeed
-	end
-end
-
-local function disableSpeed()
-	if not isSpeedEnabled then return end
-	isSpeedEnabled = false
-
-	updateHumanoid()
-	if humanoid then
-		humanoid.WalkSpeed = 16 -- speed default
-	end
-end
-
--- Fungsi publik
-_G.SetSpeedValue = function(value)
-	desiredSpeed = tonumber(value) or 16
-
-	if isSpeedEnabled then
-		updateHumanoid()
-		if humanoid then
-			humanoid.WalkSpeed = desiredSpeed
+-- Update loop
+local function applySpeed()
+	while speedEnabled do
+		local character = LocalPlayer.Character
+		if character and character:FindFirstChild("Humanoid") then
+			character.Humanoid.WalkSpeed = speedValue
 		end
+		RunService.RenderStepped:Wait()
+	end
+end
+
+-- Fungsi publik untuk GUI
+_G.SetSpeedValue = function(val)
+	local number = tonumber(val)
+	if number and number > 0 then
+		speedValue = number
 	end
 end
 
 _G.StartSpeed = function()
-	enableSpeed()
+	speedEnabled = true
+	task.spawn(applySpeed)
 end
 
 _G.StopSpeed = function()
-	disableSpeed()
+	speedEnabled = false
+	local character = LocalPlayer.Character
+	if character and character:FindFirstChild("Humanoid") then
+		character.Humanoid.WalkSpeed = 16 -- Reset ke default
+	end
+end
+
+-- Notifikasi (jika pakai Rayfield)
+if Rayfield then
+	Rayfield:Notify({
+		Title = "Speed Module Loaded",
+		Content = "Gunakan input dan toggle untuk atur kecepatan jalan.",
+		Duration = 5
+	})
+else
+	warn("Speed module loaded. Gunakan _G.StartSpeed() dan _G.SetSpeedValue(nilai).")
 end
