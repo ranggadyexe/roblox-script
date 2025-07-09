@@ -210,3 +210,88 @@ MainTab:CreateToggle({
       end
    end,
 })
+
+local TeleportTab = Window:CreateTab("Teleport", 4483362458)
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local selectedPlayer = nil
+local teleportDropdown = nil
+
+-- Fungsi ambil daftar player (selain kita)
+local function GetPlayerList()
+    local playerNames = {}
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            table.insert(playerNames, player.Name)
+        end
+    end
+    return playerNames
+end
+
+-- Buat dropdown awal
+teleportDropdown = TeleportTab:CreateDropdown({
+    Name = "Pilih Player Tujuan",
+    Options = GetPlayerList(),
+    CurrentOption = {""},
+    MultipleOptions = false,
+    Flag = "TeleportPlayer",
+    Callback = function(option)
+        selectedPlayer = option[1]
+    end,
+})
+
+-- Tombol teleport
+TeleportTab:CreateButton({
+    Name = "Teleport Sekarang",
+    Callback = function()
+        if selectedPlayer then
+            local targetPlayer = Players:FindFirstChild(selectedPlayer)
+            if targetPlayer and targetPlayer.Character then
+                local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+                local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if targetHRP and myHRP then
+                    myHRP.CFrame = targetHRP.CFrame + Vector3.new(2, 0, 2)
+                    Rayfield:Notify({
+                        Title = "Teleport Berhasil",
+                        Content = "Berhasil ke " .. selectedPlayer,
+                        Duration = 3
+                    })
+                else
+                    Rayfield:Notify({
+                        Title = "Gagal Teleport",
+                        Content = "HRP tidak ditemukan.",
+                        Duration = 3
+                    })
+                end
+            else
+                Rayfield:Notify({
+                    Title = "Player Tidak Valid",
+                    Content = "Player tidak ditemukan atau belum punya karakter.",
+                    Duration = 3
+                })
+            end
+        else
+            Rayfield:Notify({
+                Title = "Belum Pilih",
+                Content = "Silakan pilih player dulu.",
+                Duration = 3
+            })
+        end
+    end,
+})
+
+-- Tombol refresh dropdown
+TeleportTab:CreateButton({
+    Name = "Refresh Daftar Player",
+    Callback = function()
+        local updatedList = GetPlayerList()
+        teleportDropdown:Refresh(updatedList)
+        selectedPlayer = nil
+        teleportDropdown:Set({""})
+        Rayfield:Notify({
+            Title = "Daftar Diupdate",
+            Content = "Silakan pilih ulang player.",
+            Duration = 2
+        })
+    end,
+})
