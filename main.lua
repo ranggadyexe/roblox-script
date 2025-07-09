@@ -1,3 +1,4 @@
+--===[ INIT RAYFIELD ]===--
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
@@ -30,19 +31,40 @@ local Window = Rayfield:CreateWindow({
    }
 })
 
+--===[ TABS ]===--
 local InfoTab = Window:CreateTab("Script Info", 4483362458)
 local MainTab = Window:CreateTab("Main", 4483362458)
+local TeleportTab = Window:CreateTab("Teleport", 4483362458)
+local ServerTab = Window:CreateTab("Server", 4483362458)
 
-MainTab:CreateButton({
-   Name = "Button Example",
-   Callback = function()
-      print("Button clicked!")
-   end,
+-- Walkspeed
+MainTab:CreateSlider({
+   Name = "Lari Ngibrit",
+   Range = {16, 500},
+   Increment = 10,
+   Suffix = "Walkspeed",
+   CurrentValue = 10,
+   Flag = "Slider1",
+   Callback = function(v)
+      game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = v
+   end
 })
 
--- Toggle Infinite Jump
-_G.InfiniteJumpConnection = nil
+-- JumpPower
+MainTab:CreateSlider({
+   Name = "Loncat Tinggi",
+   Range = {50, 500},
+   Increment = 10,
+   Suffix = "JumpPower",
+   CurrentValue = 10,
+   Flag = "Slider1",
+   Callback = function(v)
+      game.Players.LocalPlayer.Character.Humanoid.JumpPower = v
+   end
+})
 
+-- Infinite Jump
+_G.InfiniteJumpConnection = nil
 MainTab:CreateToggle({
    Name = "Loncat Loncat",
    CurrentValue = false,
@@ -51,47 +73,17 @@ MainTab:CreateToggle({
       if enabled then
          _G.InfiniteJumpConnection = game:GetService("UserInputService").JumpRequest:Connect(function()
             local humanoid = game:GetService("Players").LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-               humanoid:ChangeState("Jumping")
-            end
+            if humanoid then humanoid:ChangeState("Jumping") end
          end)
-      else
-         if _G.InfiniteJumpConnection then
-            _G.InfiniteJumpConnection:Disconnect()
-            _G.InfiniteJumpConnection = nil
-         end
+      elseif _G.InfiniteJumpConnection then
+         _G.InfiniteJumpConnection:Disconnect()
+         _G.InfiniteJumpConnection = nil
       end
-   end,
+   end
 })
 
-
-local Slider = MainTab:CreateSlider({
-    Name = "Lari Ngibrit",
-    Range = {16, 500},
-    Increment = 10,
-    Suffix = "Walkspeed",
-    CurrentValue = 10,
-    Flag = "Slider1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
-    Callback = function(v)
-        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = v
-    end,
- })
-
-
- local Slider = MainTab:CreateSlider({
-    Name = "Loncat Tinggi",
-    Range = {50, 500},
-    Increment = 10,
-    Suffix = "JumpPower",
-    CurrentValue = 10,
-    Flag = "Slider1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
-    Callback = function(v)
-        game.Players.LocalPlayer.Character.Humanoid.JumpPower = v
-    end,
- })
-
-
- MainTab:CreateToggle({
+-- Anti AFK
+MainTab:CreateToggle({
    Name = "Anti-AFK",
    CurrentValue = false,
    Flag = "AntiAFK",
@@ -102,20 +94,16 @@ local Slider = MainTab:CreateSlider({
             wait(1)
             game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
          end)
-      else
-         if _G.AntiAFKConnection then
-            _G.AntiAFKConnection:Disconnect()
-            _G.AntiAFKConnection = nil
-         end
+      elseif _G.AntiAFKConnection then
+         _G.AntiAFKConnection:Disconnect()
+         _G.AntiAFKConnection = nil
       end
-   end,
+   end
 })
 
-
-
+-- Noclip
 _G.Noclip = false
 _G.NoclipConnection = nil
-
 MainTab:CreateToggle({
    Name = "Noclip",
    CurrentValue = false,
@@ -133,24 +121,21 @@ MainTab:CreateToggle({
                end
             end
          end)
-      else
-         if _G.NoclipConnection then
-            _G.NoclipConnection:Disconnect()
-            _G.NoclipConnection = nil
-         end
+      elseif _G.NoclipConnection then
+         _G.NoclipConnection:Disconnect()
+         _G.NoclipConnection = nil
       end
-   end,
+   end
 })
 
-
-
+-- Low Graphics
 MainTab:CreateToggle({
    Name = "Graphic Kentang",
    CurrentValue = false,
    Flag = "LowGFX",
    Callback = function(enabled)
       if enabled then
-         for _,v in pairs(game:GetDescendants()) do
+         for _, v in pairs(game:GetDescendants()) do
             if v:IsA("Texture") or v:IsA("Decal") then
                v.Transparency = 1
             elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
@@ -165,133 +150,287 @@ MainTab:CreateToggle({
          game.Lighting.FogEnd = 1000
          settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
       end
-   end,
+   end
 })
 
+--===[ Anti Knockback & Anti Damage dengan SpeedSinkronisasi ]===--
+_G.AntiDamageEnabled = false
+_G.AntiDamageConnection = nil
 
-
--- Variabel koneksi Fly
-_G.FlyConnection = nil
-
--- Toggle Fly
 MainTab:CreateToggle({
-   Name = "Terbang (BELOM OPTIMAL)",
+   Name = "Anti Damage / Knockback",
    CurrentValue = false,
-   Flag = "FlyToggle",
+   Flag = "AntiDamage",
    Callback = function(enabled)
-      local player = game.Players.LocalPlayer
-      local char = player.Character or player.CharacterAdded:Wait()
-      local hrp = char:WaitForChild("HumanoidRootPart")
+      _G.AntiDamageEnabled = enabled
+
+      local function protectHumanoid()
+         local char = game.Players.LocalPlayer.Character
+         if not char then return end
+         local humanoid = char:FindFirstChildOfClass("Humanoid")
+         local hrp = char:FindFirstChild("HumanoidRootPart")
+         if not humanoid or not hrp then return end
+
+         _G.AntiDamageConnection = game:GetService("RunService").Stepped:Connect(function()
+            if _G.AntiDamageEnabled then
+               -- Sinkron dengan WalkSpeed: Hentikan velocity agar tidak terdorong
+               hrp.Velocity = Vector3.zero
+
+               -- Cegah kehilangan HP
+               if humanoid.Health < humanoid.MaxHealth then
+                  humanoid.Health = humanoid.MaxHealth
+               end
+            end
+         end)
+      end
 
       if enabled then
-         -- Tambahkan BodyVelocity
-         local bv = Instance.new("BodyVelocity")
-         bv.Name = "FlyVelocity"
-         bv.MaxForce = Vector3.new(0, math.huge, 0)
-         bv.Velocity = Vector3.new(0, 0, 0)
-         bv.Parent = hrp
-
-         -- Jalankan loop untuk mempertahankan terbang
-         _G.FlyConnection = game:GetService("RunService").Heartbeat:Connect(function()
-            bv.Velocity = Vector3.new(0, 50, 0) -- Ubah 50 jadi kecepatan naik
-         end)
+         protectHumanoid()
+         game.Players.LocalPlayer.CharacterAdded:Connect(protectHumanoid)
       else
-         -- Stop fly
-         if _G.FlyConnection then
-            _G.FlyConnection:Disconnect()
-            _G.FlyConnection = nil
-         end
-
-         -- Hapus BodyVelocity
-         local bv = hrp:FindFirstChild("FlyVelocity")
-         if bv then
-            bv:Destroy()
+         if _G.AntiDamageConnection then
+            _G.AntiDamageConnection:Disconnect()
+            _G.AntiDamageConnection = nil
          end
       end
-   end,
+   end
 })
 
-local TeleportTab = Window:CreateTab("Teleport", 4483362458)
+
+
+--===[ TELEPORT TAB ]===--
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local selectedPlayer = nil
 local teleportDropdown = nil
 
--- Fungsi ambil daftar player (selain kita)
 local function GetPlayerList()
-    local playerNames = {}
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            table.insert(playerNames, player.Name)
-        end
-    end
-    return playerNames
+   local playerNames = {}
+   for _, player in pairs(Players:GetPlayers()) do
+      if player ~= LocalPlayer and player.Character then
+         table.insert(playerNames, player.Name)
+      end
+   end
+   return playerNames
 end
 
--- Buat dropdown awal
 teleportDropdown = TeleportTab:CreateDropdown({
-    Name = "Pilih Player Tujuan",
-    Options = GetPlayerList(),
-    CurrentOption = {""},
-    MultipleOptions = false,
-    Flag = "TeleportPlayer",
-    Callback = function(option)
-        selectedPlayer = option[1]
-    end,
+   Name = "Pilih Player Tujuan",
+   Options = GetPlayerList(),
+   CurrentOption = {""},
+   MultipleOptions = false,
+   Flag = "TeleportPlayer",
+   Callback = function(option)
+      selectedPlayer = option[1]
+   end
 })
 
--- Tombol teleport
 TeleportTab:CreateButton({
-    Name = "Teleport Sekarang",
-    Callback = function()
-        if selectedPlayer then
-            local targetPlayer = Players:FindFirstChild(selectedPlayer)
-            if targetPlayer and targetPlayer.Character then
-                local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-                local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if targetHRP and myHRP then
-                    myHRP.CFrame = targetHRP.CFrame + Vector3.new(2, 0, 2)
-                    Rayfield:Notify({
-                        Title = "Teleport Berhasil",
-                        Content = "Berhasil ke " .. selectedPlayer,
-                        Duration = 3
-                    })
-                else
-                    Rayfield:Notify({
-                        Title = "Gagal Teleport",
-                        Content = "HRP tidak ditemukan.",
-                        Duration = 3
-                    })
-                end
+   Name = "Teleport Sekarang",
+   Callback = function()
+      if selectedPlayer then
+         local targetPlayer = Players:FindFirstChild(selectedPlayer)
+         if targetPlayer and targetPlayer.Character then
+            local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if targetHRP and myHRP then
+               myHRP.CFrame = targetHRP.CFrame + Vector3.new(2, 0, 2)
+               Rayfield:Notify({
+                  Title = "Teleport Berhasil",
+                  Content = "Berhasil ke " .. selectedPlayer,
+                  Duration = 3
+               })
             else
-                Rayfield:Notify({
-                    Title = "Player Tidak Valid",
-                    Content = "Player tidak ditemukan atau belum punya karakter.",
-                    Duration = 3
-                })
+               Rayfield:Notify({
+                  Title = "Gagal Teleport",
+                  Content = "HRP tidak ditemukan.",
+                  Duration = 3
+               })
             end
-        else
+         else
             Rayfield:Notify({
-                Title = "Belum Pilih",
-                Content = "Silakan pilih player dulu.",
-                Duration = 3
+               Title = "Player Tidak Valid",
+               Content = "Player tidak ditemukan atau belum punya karakter.",
+               Duration = 3
             })
-        end
-    end,
+         end
+      else
+         Rayfield:Notify({
+            Title = "Belum Pilih",
+            Content = "Silakan pilih player dulu.",
+            Duration = 3
+         })
+      end
+   end
 })
 
--- Tombol refresh dropdown
 TeleportTab:CreateButton({
-    Name = "Refresh Daftar Player",
-    Callback = function()
-        local updatedList = GetPlayerList()
-        teleportDropdown:Refresh(updatedList)
-        selectedPlayer = nil
-        teleportDropdown:Set({""})
-        Rayfield:Notify({
-            Title = "Daftar Diupdate",
-            Content = "Silakan pilih ulang player.",
-            Duration = 2
-        })
-    end,
+   Name = "Refresh Daftar Player",
+   Callback = function()
+      local updatedList = GetPlayerList()
+      teleportDropdown:Refresh(updatedList)
+      selectedPlayer = nil
+      teleportDropdown:Set({""})
+      Rayfield:Notify({
+         Title = "Daftar Diupdate",
+         Content = "Silakan pilih ulang player.",
+         Duration = 2
+      })
+   end
 })
+
+local savedCFrame = nil
+TeleportTab:CreateButton({
+   Name = "📌 Simpan Posisi Saat Ini",
+   Callback = function()
+      local char = game.Players.LocalPlayer.Character
+      if char and char:FindFirstChild("HumanoidRootPart") then
+         savedCFrame = char.HumanoidRootPart.CFrame
+         Rayfield:Notify({
+            Title = "Posisi Disimpan",
+            Content = "Posisi berhasil disimpan!",
+            Duration = 3
+         })
+      else
+         Rayfield:Notify({
+            Title = "Gagal Menyimpan",
+            Content = "Karakter atau HRP tidak ditemukan.",
+            Duration = 3
+         })
+      end
+   end
+})
+
+TeleportTab:CreateButton({
+   Name = "🚀 Teleport ke Posisi Tersimpan",
+   Callback = function()
+      local char = game.Players.LocalPlayer.Character
+      if char and char:FindFirstChild("HumanoidRootPart") and savedCFrame then
+         char.HumanoidRootPart.CFrame = savedCFrame
+         Rayfield:Notify({
+            Title = "Teleport Sukses",
+            Content = "Kamu telah kembali ke posisi tersimpan.",
+            Duration = 3
+         })
+      else
+         Rayfield:Notify({
+            Title = "Gagal Teleport",
+            Content = "Posisi belum disimpan atau karakter tidak lengkap.",
+            Duration = 3
+         })
+      end
+   end
+})
+
+
+
+--===[ SERVER TAB ]===--
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local PlaceId = game.PlaceId
+
+ServerTab:CreateButton({
+   Name = "Server Hop",
+   Callback = function()
+      local servers = {}
+      local req = syn and syn.request or http and http.request or http_request or request
+      local body = req({
+         Url = "https://games.roblox.com/v1/games/"..PlaceId.."/servers/Public?sortOrder=Asc&limit=100"
+      }).Body
+      local data = HttpService:JSONDecode(body)
+      for _, server in pairs(data.data) do
+         if server.playing < server.maxPlayers and server.id ~= game.JobId then
+            table.insert(servers, server.id)
+         end
+      end
+      TeleportService:TeleportToPlaceInstance(PlaceId, servers[math.random(1, #servers)], LocalPlayer)
+   end
+})
+
+ServerTab:CreateButton({
+   Name = "Rejoin Server",
+   Callback = function()
+      TeleportService:Teleport(PlaceId, LocalPlayer)
+   end
+})
+
+ServerTab:CreateButton({
+   Name = "Join Server dengan Sedikit Pemain",
+   Callback = function()
+      local HttpService = game:GetService("HttpService")
+      local TeleportService = game:GetService("TeleportService")
+      local Players = game:GetService("Players")
+      local PlaceId = game.PlaceId
+      local LocalPlayer = Players.LocalPlayer
+
+      local servers = {}
+      local req = syn and syn.request or http and http.request or http_request or request
+
+      local body = req({
+         Url = "https://games.roblox.com/v1/games/"..PlaceId.."/servers/Public?sortOrder=Asc&limit=100"
+      }).Body
+
+      local data = HttpService:JSONDecode(body)
+
+      for _, server in pairs(data.data) do
+         if server.playing > 0 and server.playing <= 5 and server.id ~= game.JobId then
+            table.insert(servers, server.id)
+         end
+      end
+
+      if #servers > 0 then
+         TeleportService:TeleportToPlaceInstance(PlaceId, servers[math.random(1, #servers)], LocalPlayer)
+      else
+         Rayfield:Notify({
+            Title = "Tidak Ditemukan",
+            Content = "Tidak ada server dengan ≤5 player saat ini.",
+            Duration = 3
+         })
+      end
+   end
+})
+
+-- Admin/Moderator Detection
+local blacklistUsers = { "Admin1", "ModUser", "TestMod" }
+_G.AdminAction = "None"
+
+ServerTab:CreateDropdown({
+   Name = "Aksi saat Admin/Mod Masuk",
+   Options = {"None", "Warning", "Kick"},
+   CurrentOption = "None",
+   Flag = "AdminActionDropdown",
+   Callback = function(option)
+      _G.AdminAction = option
+   end
+})
+
+local function IsBlacklisted(user)
+   for _, name in pairs(blacklistUsers) do
+      if user == name then return true end
+   end
+   return false
+end
+
+local function HandleAdminDetection(playerName)
+   if _G.AdminAction == "Warning" then
+      Rayfield:Notify({
+         Title = "⚠️ Admin/Mod Terdeteksi!",
+         Content = "Player mencurigakan: " .. playerName,
+         Duration = 5
+      })
+   elseif _G.AdminAction == "Kick" then
+      LocalPlayer:Kick("Admin/Mod terdeteksi: " .. playerName)
+   end
+end
+
+for _, player in pairs(Players:GetPlayers()) do
+   if IsBlacklisted(player.Name) then
+      HandleAdminDetection(player.Name)
+   end
+end
+
+Players.PlayerAdded:Connect(function(player)
+   if IsBlacklisted(player.Name) then
+      HandleAdminDetection(player.Name)
+   end
+end)
