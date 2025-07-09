@@ -1,24 +1,14 @@
--- main.lua (online loader)
-loadstring(game:HttpGet("https://raw.githubusercontent.com/ranggadyexe/roblox-script/main/Rayfield.lua"))()
+-- Load Rayfield dulu
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ranggadyexe/roblox-script/main/rayfield.lua"))()
 
-local modules = {
-    "fly",
-    "speedwalk",
-    "jumppower",
-    "antiafk",
-    "lowgraphic",
-    "noclip",
-    "teleport"
-}
+-- Load semua modules
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ranggadyexe/roblox-script/main/modules/fly.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ranggadyexe/roblox-script/main/modules/speedwalk.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ranggadyexe/roblox-script/main/modules/jumppower.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ranggadyexe/roblox-script/main/modules/antiafk.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ranggadyexe/roblox-script/main/modules/lowgraphic.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ranggadyexe/roblox-script/main/modules/noclip.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ranggadyexe/roblox-script/main/modules/teleport.lua"))()
 
-for _, name in ipairs(modules) do
-    local url = ("https://raw.githubusercontent.com/ranggadyexe/roblox-script/main/modules/%s.lua"):format(name)
-    local ok, err = pcall(function()
-        loadstring(game:HttpGet(url))()
-    end)
-    if not ok then
-        warn("Gagal load module:", name, err)
-    end
-end
-
+-- Baru setelah semua _G.XXX siap, load GUI
 loadstring(game:HttpGet("https://raw.githubusercontent.com/ranggadyexe/roblox-script/main/gui/gui.lua"))()
