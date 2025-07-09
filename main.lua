@@ -322,6 +322,46 @@ TeleportTab:CreateButton({
    end
 })
 
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local Mouse = Players.LocalPlayer:GetMouse()
+local LocalPlayer = Players.LocalPlayer
+local teleportClickEnabled = false
+local lastClickedCFrame = nil
+
+-- Toggle untuk aktifkan mode teleport via klik + keybind
+TeleportTab:CreateToggle({
+   Name = "Aktifkan Klik Teleport (Butuh Keybind)",
+   CurrentValue = false,
+   Flag = "ClickTeleportToggle",
+   Callback = function(state)
+      teleportClickEnabled = state
+   end,
+})
+
+-- Simpan posisi terakhir saat klik (tapi tidak teleport)
+Mouse.Button1Down:Connect(function()
+   if teleportClickEnabled and Mouse.Target then
+      lastClickedCFrame = CFrame.new(Mouse.Hit.Position + Vector3.new(0, 3, 0))
+   end
+end)
+
+-- Keybind untuk teleport ke tempat yang diklik
+TeleportTab:CreateKeybind({
+   Name = "Teleport ke Klik (Tekan untuk Pindah)",
+   CurrentKeybind = "L",
+   HoldToInteract = false,
+   Flag = "ClickTeleportKeybind",
+   Callback = function()
+      if teleportClickEnabled and lastClickedCFrame then
+         local char = LocalPlayer.Character
+         if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = lastClickedCFrame
+         end
+      end
+   end,
+})
+
 
 
 --===[ SERVER TAB ]===--
