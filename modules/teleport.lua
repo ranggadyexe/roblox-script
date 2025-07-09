@@ -1,44 +1,57 @@
--- modules/teleport.lua
--- Teleport ke player manapun di game
+-- Global untuk menyimpan target
+_G.TeleportTarget = nil
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+-- Fungsi untuk mengambil semua nama player (kecuali diri sendiri)
+local function GetOtherPlayers()
+    local players = game:GetService("Players")
+    local localPlayer = players.LocalPlayer
+    local list = {}
 
--- Variabel untuk menyimpan target pemain
-_G.TeleportTargetPlayer = nil
-
-_G.SetTeleportTarget = function(name)
-    _G.TeleportTargetPlayer = name
-end
-
-_G.TeleportToPlayer = function()
-    if not _G.TeleportTargetPlayer then
-        warn("Belum memilih player!")
-        return
-    end
-
-    local targetPlayer = Players:FindFirstChild(_G.TeleportTargetPlayer)
-    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
-
-        local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        local hrp = character:FindFirstChild("HumanoidRootPart")
-
-        if hrp then
-            hrp.CFrame = CFrame.new(targetPosition + Vector3.new(0, 5, 0)) -- sedikit di atas biar gak nyangkut
-        end
-    else
-        warn("Player tidak ditemukan atau belum spawn.")
-    end
-end
-
--- Untuk ambil semua nama pemain saat ini
-_G.GetAllPlayerNames = function()
-    local names = {}
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            table.insert(names, player.Name)
+    for _, p in pairs(players:GetPlayers()) do
+        if p ~= localPlayer then
+            table.insert(list, p.Name)
         end
     end
-    return names
+
+    return list
 end
+
+-- Dropdown Player
+MainTab:CreateDropdown({
+    Name = "Pilih Player Tujuan",
+    Options = GetOtherPlayers(),
+    CurrentOption = "",
+    Flag = "TargetPlayer",
+    Callback = function(Selected)
+        _G.TeleportTarget = Selected
+    end,
+})
+
+-- Tombol Teleport
+MainTab:CreateButton({
+    Name = "Teleport ke Player",
+    Callback = function()
+        if not _G.TeleportTarget then
+            Rayfield:Notify({
+                Title = "Teleport",
+                Content = "Belum pilih player!",
+                Duration = 3
+            })
+            return
+        end
+
+        local targetPlayer = game.Players:FindFirstChild(_G.TeleportTarget)
+        if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local localHRP = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if localHRP then
+                localHRP.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(2, 0, 2) -- offset sedikit
+            end
+        else
+            Rayfield:Notify({
+                Title = "Teleport",
+                Content = "Gagal teleport. Mungkin player sudah keluar.",
+                Duration = 3
+            })
+        end
+    end,
+})
