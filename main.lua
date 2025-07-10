@@ -362,6 +362,33 @@ TeleportTab:CreateKeybind({
    end,
 })
 
+TeleportTab:CreateButton({
+   Name = "🛒 Teleport ke Traveling Merchant",
+   Callback = function()
+      local Players = game:GetService("Players")
+      local LocalPlayer = Players.LocalPlayer
+      local HRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+      if not HRP then return end
+
+      local merchant = nil
+      for _, obj in pairs(workspace:GetDescendants()) do
+         if obj:IsA("Model") or obj:IsA("Part") or obj:IsA("MeshPart") then
+            if string.lower(obj.Name):find("merchant") then
+               merchant = obj
+               break
+            end
+         end
+      end
+
+      if merchant then
+         local targetCFrame = merchant:IsA("Model") and merchant:GetModelCFrame() or merchant.CFrame
+         HRP.CFrame = targetCFrame + Vector3.new(2, 0, 2)
+      else
+         warn("Merchant tidak ditemukan.")
+      end
+   end
+})
 
 
 --===[ SERVER TAB ]===--
