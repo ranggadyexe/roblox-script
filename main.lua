@@ -41,9 +41,9 @@ local ServerTab = Window:CreateTab("Server", 4483362458)
 MainTab:CreateSlider({
    Name = "Lari Ngibrit",
    Range = {16, 500},
-   Increment = 10,
+   Increment = 1,
    Suffix = "Walkspeed",
-   CurrentValue = 10,
+   CurrentValue = 16,
    Flag = "Slider1",
    Callback = function(v)
       game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = v
@@ -54,9 +54,9 @@ MainTab:CreateSlider({
 MainTab:CreateSlider({
    Name = "Loncat Tinggi",
    Range = {50, 500},
-   Increment = 10,
+   Increment = 1,
    Suffix = "JumpPower",
-   CurrentValue = 10,
+   CurrentValue = 50,
    Flag = "Slider1",
    Callback = function(v)
       game.Players.LocalPlayer.Character.Humanoid.JumpPower = v
