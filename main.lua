@@ -279,6 +279,126 @@ TeleportTab:CreateButton({
    end
 })
 
+local NPCSearchBox
+local NPCDropdown
+local selectedNPC = nil
+
+-- Ambil daftar NPC valid (bukan player & bisa diteleport)
+local function GetValidSortedNPCList(filter)
+    local npcNameSet = {}
+    local allPlayers = game:GetService("Players"):GetPlayers()
+
+    for _, model in pairs(workspace:GetDescendants()) do
+        if model:IsA("Model") and model:FindFirstChild("Humanoid") then
+            -- Cek apakah ini karakter player
+            local isPlayerCharacter = false
+            for _, p in ipairs(allPlayers) do
+                if p.Character == model then
+                    isPlayerCharacter = true
+                    break
+                end
+            end
+
+            if not isPlayerCharacter then
+                -- Cek apakah model punya part untuk teleport
+                local hasValidPart = model:FindFirstChild("HumanoidRootPart") or model.PrimaryPart
+                if not hasValidPart then
+                    for _, part in ipairs(model:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            hasValidPart = true
+                            break
+                        end
+                    end
+                end
+
+                if hasValidPart then
+                    if not filter or string.find(string.lower(model.Name), string.lower(filter)) then
+                        npcNameSet[model.Name] = true
+                    end
+                end
+            end
+        end
+    end
+
+    local npcNames = {}
+    for name in pairs(npcNameSet) do
+        table.insert(npcNames, name)
+    end
+    table.sort(npcNames)
+    return npcNames
+end
+
+-- Fungsi teleport ke NPC dengan nama
+local function TeleportToNPC(name)
+    local function findNPCByName(targetName)
+        for _, descendant in ipairs(workspace:GetDescendants()) do
+            if descendant:IsA("Model") and descendant.Name == targetName and descendant:FindFirstChild("Humanoid") then
+                return descendant
+            end
+        end
+        return nil
+    end
+
+    local npc = findNPCByName(name)
+    local char = game.Players.LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+    if not npc or not hrp then return end
+
+    local targetCFrame = nil
+    if npc:FindFirstChild("HumanoidRootPart") then
+        targetCFrame = npc.HumanoidRootPart.CFrame
+    elseif npc.PrimaryPart then
+        targetCFrame = npc.PrimaryPart.CFrame
+    else
+        for _, part in ipairs(npc:GetDescendants()) do
+            if part:IsA("BasePart") then
+                targetCFrame = part.CFrame
+                break
+            end
+        end
+    end
+
+    if targetCFrame then
+        hrp.CFrame = targetCFrame + Vector3.new(2, 2, 2)
+    end
+end
+
+-- Dropdown NPC
+NPCDropdown = TeleportTab:CreateDropdown({
+    Name = "Pilih NPC (Auto Teleport)",
+    Options = GetValidSortedNPCList(),
+    CurrentOption = {""},
+    MultipleOptions = false,
+    Flag = "NPCSelector",
+    Callback = function(option)
+        if option[1] ~= "" then
+            TeleportToNPC(option[1])
+        end
+    end
+})
+
+-- Search Box (untuk filter nama NPC)
+NPCSearchBox = TeleportTab:CreateInput({
+    Name = "Cari Nama NPC",
+    PlaceholderText = "Contoh: Miner",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(text)
+        local filtered = GetValidSortedNPCList(text)
+        NPCDropdown:Refresh(filtered)
+    end
+})
+
+-- Tombol Refresh NPC
+TeleportTab:CreateButton({
+    Name = "🔄 Refresh Daftar NPC",
+    Callback = function()
+        NPCDropdown:Refresh(GetValidSortedNPCList())
+        NPCDropdown:Set({""})
+    end
+})
+
+
 local savedCFrame = nil
 TeleportTab:CreateButton({
    Name = "📌 Simpan Posisi Saat Ini",
@@ -368,24 +488,60 @@ TeleportTab:CreateButton({
       local Players = game:GetService("Players")
       local LocalPlayer = Players.LocalPlayer
       local HRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-
       if not HRP then return end
 
       local merchant = nil
       for _, obj in pairs(workspace:GetDescendants()) do
-         if obj:IsA("Model") or obj:IsA("Part") or obj:IsA("MeshPart") then
-            if string.lower(obj.Name):find("merchant") then
+         -- Nama harus mengandung 'travel' dan bukan yang tetap
+         local nameLower = string.lower(obj.Name)
+         if (nameLower:find("travel") or nameLower:find("travelling")) and obj:IsA("Model") then
+            -- Pastikan bukan merchant tetap
+            if not nameLower:find("normal") and not nameLower:find("static") then
                merchant = obj
                break
             end
          end
       end
 
+      local targetCFrame = nil
       if merchant then
-         local targetCFrame = merchant:IsA("Model") and merchant:GetModelCFrame() or merchant.CFrame
-         HRP.CFrame = targetCFrame + Vector3.new(2, 0, 2)
+         if merchant:FindFirstChild("HumanoidRootPart") then
+            targetCFrame = merchant.HumanoidRootPart.CFrame
+         elseif merchant.PrimaryPart then
+            targetCFrame = merchant.PrimaryPart.CFrame
+         else
+            for _, part in ipairs(merchant:GetDescendants()) do
+               if part:IsA("BasePart") then
+                  targetCFrame = part.CFrame
+                  break
+               end
+            end
+         end
+      end
+
+      if targetCFrame then
+         HRP.CFrame = targetCFrame + Vector3.new(2, 3, 2)
       else
-         warn("Merchant tidak ditemukan.")
+         warn("Traveling Merchant tidak ditemukan atau tidak memiliki part yang valid.")
+      end
+   end
+})
+
+
+TeleportTab:CreateButton({
+   Name = "🌀 Teleport ke Enchantment Altar",
+   Callback = function()
+      local altar = nil
+      for _, v in pairs(workspace:GetDescendants()) do
+         if v:IsA("BasePart") and v.Name:lower():find("enchant") then
+            altar = v
+            break
+         end
+      end
+
+      local hrp = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+      if altar and hrp then
+         hrp.CFrame = altar.CFrame + Vector3.new(0, 5, 0) -- agar tidak nyangkut di bawah
       end
    end
 })
