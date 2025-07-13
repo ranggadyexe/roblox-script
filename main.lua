@@ -33,9 +33,80 @@ local Window = Rayfield:CreateWindow({
 
 --===[ TABS ]===--
 local InfoTab = Window:CreateTab("Script Info", 4483362458)
+local CheatTab = Window:CreateTab("⚙️ Cheat")
 local MainTab = Window:CreateTab("Main", 4483362458)
 local TeleportTab = Window:CreateTab("Teleport", 4483362458)
 local ServerTab = Window:CreateTab("Server", 4483362458)
+
+CheatTab:CreateButton({
+    Name = "Teleport ke Meteor",
+    Callback = function()
+        local player = game.Players.LocalPlayer
+        local character = player.Character or player.CharacterAdded:Wait()
+        local hrp = character:WaitForChild("HumanoidRootPart")
+
+        local meteorModel = workspace:FindFirstChild("Active") and workspace.Active:FindFirstChild("ActiveMeteor")
+
+        if meteorModel then
+            local targetPart = meteorModel.PrimaryPart or meteorModel:FindFirstChildWhichIsA("BasePart")
+            if targetPart then
+                hrp.CFrame = targetPart.CFrame + Vector3.new(0, 5, 0)
+            else
+                Rayfield:Notify({
+                    Title = "Gagal Teleport",
+                    Content = "Meteor ditemukan tapi tidak punya part yang bisa ditempati.",
+                    Duration = 4
+                })
+            end
+        else
+            Rayfield:Notify({
+                Title = "Meteor tidak ditemukan!",
+                Content = "METEOR TIDAK ADA!!!.",
+                Duration = 4
+            })
+        end
+    end
+})
+
+
+CheatTab:CreateButton({
+   Name = "Jual Semua Items",
+   Callback = function()
+      local player = game.Players.LocalPlayer
+      local character = player.Character or player.CharacterAdded:Wait()
+      local hrp = character:WaitForChild("HumanoidRootPart")
+
+      local rocky = workspace:WaitForChild("World"):WaitForChild("NPCs"):WaitForChild("Rocky")
+      local sellRemote = game.ReplicatedStorage:WaitForChild("DialogueRemotes"):WaitForChild("SellAllItems")
+      local finishRemote = game.ReplicatedStorage:WaitForChild("DialogueRemotes"):WaitForChild("DialogueFinish")
+
+      if rocky and rocky.PrimaryPart and sellRemote and finishRemote then
+         local originalCFrame = hrp.CFrame
+         hrp.CFrame = rocky.PrimaryPart.CFrame + Vector3.new(0, 5, 0)
+
+         -- Fire jual item
+         task.delay(0.3, function()
+            sellRemote:FireServer(rocky)
+
+            -- Tutup dialog
+            task.delay(0.2, function()
+               finishRemote:FireServer("Rocky", true)
+
+               -- Kembali ke posisi semula
+               task.delay(0.3, function()
+                  hrp.CFrame = originalCFrame
+               end)
+            end)
+         end)
+      else
+         Rayfield:Notify({
+            Title = "Gagal",
+            Content = "Tidak bisa menemukan Rocky atau RemoteEvent.",
+            Duration = 5
+         })
+      end
+   end,
+})
 
 -- Walkspeed
 MainTab:CreateSlider({
@@ -195,8 +266,6 @@ MainTab:CreateToggle({
       end
    end
 })
-
-
 
 --===[ TELEPORT TAB ]===--
 local Players = game:GetService("Players")
@@ -389,15 +458,140 @@ NPCSearchBox = TeleportTab:CreateInput({
     end
 })
 
--- Tombol Refresh NPC
-TeleportTab:CreateButton({
-    Name = "🔄 Refresh Daftar NPC",
-    Callback = function()
-        NPCDropdown:Refresh(GetValidSortedNPCList())
-        NPCDropdown:Set({""})
+local TeleportToBoss = false
+local SelectedBosses = {}
+
+local AllBosses = {
+    "King Crab",
+    "Candlelight Phantom",
+    "Giant Spider",
+    "Basilisk",
+    "Molten Monstrosity",
+    "Dire Wolf"
+}
+
+-- Fungsi teleport
+local function teleportTo(target)
+    local char = game.Players.LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local cf = nil
+    if target:FindFirstChild("HumanoidRootPart") then
+        cf = target.HumanoidRootPart.CFrame
+    elseif target.PrimaryPart then
+        cf = target.PrimaryPart.CFrame
+    else
+        for _, part in ipairs(target:GetDescendants()) do
+            if part:IsA("BasePart") then
+                cf = part.CFrame
+                break
+            end
+        end
     end
+
+    if cf then
+        hrp.CFrame = cf + Vector3.new(0, 5, 0)
+        print("[AutoTP] Teleport ke boss:", target.Name)
+    end
+end
+
+-- Loop pengecekan boss
+task.spawn(function()
+    while true do
+        if TeleportToBoss then
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
+                    for _, boss in ipairs(SelectedBosses) do
+                        if obj.Name:lower():find(boss:lower()) then
+                            teleportTo(obj)
+                            break
+                        end
+                    end
+                end
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+-- Toggle aktif auto teleport
+TeleportTab:CreateToggle({
+    Name = "🌀 Auto Teleport Boss",
+    CurrentValue = false,
+    Flag = "AutoBossTP",
+    Callback = function(state)
+        TeleportToBoss = state
+    end,
 })
 
+-- Dropdown boss target
+TeleportTab:CreateDropdown({
+    Name = "🎯 Pilih Boss Target",
+    Options = AllBosses,
+    CurrentOption = {},
+    MultipleOptions = true,
+    Flag = "BossList",
+    Callback = function(selected)
+        SelectedBosses = selected
+    end,
+})
+
+
+local placeNames = {
+    "Alona Jungle",
+    "Cinder Approach",
+    "Cinder Shores",
+    "Copper Mesa",
+    "Fernhill Forest",
+    "Fox Town",
+    "Mount Charcoal",
+    "Mount Cinder",
+    "Rooftop Woodlands",
+    "Verdant Vale"
+}
+
+local function findExactLocation(placeName)
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if (obj:IsA("Model") or obj:IsA("BasePart")) and obj.Name == placeName then
+            if obj:IsA("Model") and obj.PrimaryPart then
+                return obj.PrimaryPart.CFrame
+            elseif obj:IsA("BasePart") then
+                return obj.CFrame
+            end
+        end
+    end
+    return nil
+end
+
+TeleportTab:CreateDropdown({
+    Name = "🌍 Pilih Tempat (Belom Optimal)",
+    Options = placeNames,
+    CurrentOption = {""},
+    MultipleOptions = false,
+    Flag = "PlaceTeleport",
+    Callback = function(option)
+        local selectedPlace = option[1]
+        local destination = findExactLocation(selectedPlace)
+        local char = game.Players.LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+        if destination and hrp then
+            hrp.CFrame = destination + Vector3.new(0, 2, 0) -- offset kecil
+            Rayfield:Notify({
+                Title = "Teleport Berhasil",
+                Content = "Ke tempat: " .. selectedPlace,
+                Duration = 3
+            })
+        else
+            Rayfield:Notify({
+                Title = "Gagal Teleport",
+                Content = "Lokasi tidak ditemukan: " .. selectedPlace,
+                Duration = 3
+            })
+        end
+    end
+})
 
 local savedCFrame = nil
 TeleportTab:CreateButton({
