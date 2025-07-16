@@ -29,8 +29,9 @@ local Window = Rayfield:CreateWindow({
 })
 
 local MainTab = Window:CreateTab("🎣 Auto Fish", 4483362458)
-local SellTab = Window:CreateTab("💰 Penjualan", 4483362458)
-local TeleportTab = Window:CreateTab("🧍 Teleportasi", 4483362458)
+local SellTab = Window:CreateTab("💵 Penjualan", 4483362458)
+local ShopTab = Window:CreateTab("🛒 Shop", 4483362458)
+local TeleportTab = Window:CreateTab("📍 Teleportasi", 4483362458)
 local IslandsTab = Window:CreateTab("🏝️ Pulau", 4483362458)
 local ServerTab = Window:CreateTab("🌐 Server Tools", 4483362458)
 
@@ -148,6 +149,52 @@ MainTab:CreateButton({
 		})
 	end,
 })
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local FishingRadarItem = ReplicatedStorage:WaitForChild("Items"):FindFirstChild("Fishing Radar")
+local RadarRemote = ReplicatedStorage
+    :WaitForChild("Packages")
+    :WaitForChild("_Index")
+    :WaitForChild("sleitnick_net@0.2.0")
+    :WaitForChild("net")
+    :WaitForChild("RF/UpdateFishingRadar")
+
+MainTab:CreateToggle({
+    Name = "📡 Fishing Radar",
+    CurrentValue = false,
+    Flag = "FishingRadarBypass",
+    Callback = function(enabled)
+        pcall(function()
+            local backpack = Players.LocalPlayer:WaitForChild("Backpack")
+            local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
+
+            if enabled then
+                -- 🔁 Clone dan masukkan Fishing Radar ke backpack
+                if FishingRadarItem then
+                    local clonedRadar = FishingRadarItem:Clone()
+                    clonedRadar.Parent = backpack
+                    print("✅ Radar dimasukkan ke Backpack")
+
+                    -- Invoke ON
+                    RadarRemote:InvokeServer(true)
+                else
+                    warn("❌ Fishing Radar item tidak ditemukan di ReplicatedStorage.Items")
+                end
+            else
+                -- Hapus radar dari backpack jika ada
+                local existing = backpack:FindFirstChild("Fishing Radar")
+                if existing then existing:Destroy() end
+
+                -- Invoke OFF
+                RadarRemote:InvokeServer(false)
+                print("🛑 Radar dimatikan dan dihapus dari backpack")
+            end
+        end)
+    end
+})
+
 
 MainTab:CreateSection("⚙️ Utility")
 -- Walkspeed
@@ -485,85 +532,154 @@ SellTab:CreateButton({
 	Callback = SellToKohana
 })
 
+ShopTab:CreateButton({
+	Name = "📍 Tempat Jual Rods",
+	Callback = function()
+		local target = workspace:FindFirstChild("!!! MENU RINGS")
+		if target and target:FindFirstChild("Rods") then
+			local hrp = game.Players.LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+			hrp.CFrame = target.Rods.CFrame + Vector3.new(0, 5, 0)
+		else
+			Rayfield:Notify({
+				Title = "Teleport Gagal",
+				Content = "'!!! MENU RINGS.Rods' tidak ditemukan!",
+				Duration = 4,
+				Image = 4483362458,
+			})
+		end
+	end,
+})
+
+local function teleportToPath(folderName, targetName)
+	local menu = workspace:FindFirstChild(folderName)
+	if not menu then
+		warn("❌ Folder '" .. folderName .. "' tidak ditemukan.")
+		return
+	end
+
+	local target = menu:FindFirstChild(targetName)
+	if not target then
+		warn("❌ Target '" .. targetName .. "' tidak ditemukan.")
+		return
+	end
+
+	local hrp = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+	if not hrp then
+		warn("❌ HumanoidRootPart tidak ditemukan.")
+		return
+	end
+
+	-- Kalau model, pakai GetPivot
+	if target:IsA("Model") then
+		hrp.CFrame = target:GetPivot() + Vector3.new(0, 5, 0)
+	elseif target:IsA("BasePart") then
+		hrp.CFrame = target.CFrame + Vector3.new(0, 5, 0)
+	else
+		warn("❌ Target bukan Model atau Part.")
+	end
+end
+
+ShopTab:CreateButton({
+	Name = "📍 Teleport ke Fishing Radar Stand",
+	Callback = function()
+		teleportToPath("!!! MENU RINGS", "Fishing Radar Stand")
+	end,
+})
+
+ShopTab:CreateButton({
+	Name = "📍 Teleport ke Ares Rod Stand",
+	Callback = function()
+		teleportToPath("!!! MENU RINGS", "Ares Rod Stand")
+	end,
+})
+
+
 
 -- SECTION: TELEPORT KE NPC
 TeleportTab:CreateSection("🧍 Teleport ke NPC")
 
-local NPCFolder = workspace:WaitForChild("NPC")
-local currentNPCList = {}
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local ReplicatedNPCFolder = ReplicatedStorage:WaitForChild("NPC")
 local NPCDropdown
 
--- Ambil daftar nama NPC dari workspace.NPC
+-- Ambil semua nama NPC, urut A-Z, bisa difilter
 local function GetSortedNPCNames(filter)
-    local npcNames = {}
+	local npcNames = {}
 
-    for _, model in ipairs(NPCFolder:GetChildren()) do
-        if model:IsA("Model") then
-            local name = model.Name
-            if not filter or string.find(string.lower(name), string.lower(filter)) then
-                table.insert(npcNames, name)
-            end
-        end
-    end
+	for _, model in ipairs(ReplicatedNPCFolder:GetChildren()) do
+		if model:IsA("Model") then
+			local name = model.Name
+			if not filter or string.find(string.lower(name), string.lower(filter)) then
+				table.insert(npcNames, name)
+			end
+		end
+	end
 
-    table.sort(npcNames)
-    return npcNames
+	table.sort(npcNames)
+	return npcNames
 end
 
--- Fungsi teleport ke NPC berdasarkan nama
+-- Teleport langsung ke ReplicatedStorage.NPC[Nama].HumanoidRootPart
 local function TeleportToNPC(name)
-    local npc = NPCFolder:FindFirstChild(name)
-    local player = game.Players.LocalPlayer
-    local char = player.Character or player.CharacterAdded:Wait()
-    local hrp = char:FindFirstChild("HumanoidRootPart")
+	local npc = ReplicatedNPCFolder:FindFirstChild(name)
+	if not npc then
+		warn("❌ NPC '" .. name .. "' tidak ditemukan.")
+		return
+	end
 
-    if npc and hrp then
-        local tpPart = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChild("Head") or npc:FindFirstChildOfClass("BasePart")
-        if tpPart then
-            hrp.CFrame = tpPart.CFrame + Vector3.new(2, 2, 2)
-        end
-    end
+	local tpPart = npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChild("Head") or npc:FindFirstChildOfClass("BasePart")
+	if not tpPart then
+		warn("❌ Tidak menemukan bagian teleport dalam NPC '" .. name .. "'")
+		return
+	end
+
+	local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if hrp then
+		hrp.CFrame = tpPart.CFrame + Vector3.new(2, 3, 2)
+	end
 end
 
 -- Dropdown NPC
 NPCDropdown = TeleportTab:CreateDropdown({
-    Name = "🧍 Teleport ke NPC",
-    Options = GetSortedNPCNames(),
-    CurrentOption = {""},
-    MultipleOptions = false,
-    Flag = "NPCSelector",
-    Callback = function(option)
-        if option[1] ~= "" then
-            TeleportToNPC(option[1])
-        end
-    end
+	Name = "🧍 Teleport ke NPC",
+	Options = GetSortedNPCNames(),
+	CurrentOption = {""},
+	MultipleOptions = false,
+	Flag = "NPCSelector",
+	Callback = function(option)
+		local selected = option[1]
+		if selected and selected ~= "" then
+			TeleportToNPC(selected)
+		end
+	end
 })
 
--- Input untuk filter
+-- Filter cari nama
 TeleportTab:CreateInput({
-    Name = "🔍 Cari Nama NPC",
-    PlaceholderText = "Contoh: PLER",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(text)
-        local filtered = GetSortedNPCNames(text)
-        NPCDropdown:Refresh(filtered)
-    end
+	Name = "🔍 Cari Nama NPC",
+	PlaceholderText = "Contoh: PLER",
+	RemoveTextAfterFocusLost = false,
+	Callback = function(text)
+		NPCDropdown:Refresh(GetSortedNPCNames(text))
+	end
 })
 
--- 🔁 Tombol Refresh Manual
+-- Tombol manual refresh
 TeleportTab:CreateButton({
-    Name = "🔁 Refresh Daftar NPC",
-    Callback = function()
-        local refreshed = GetSortedNPCNames()
-        NPCDropdown:Refresh(refreshed)
-        Rayfield:Notify({
-            Title = "Berhasil!",
-            Content = "Daftar NPC berhasil diperbarui.",
-            Duration = 3,
-            Image = nil,
-        })
-    end
+	Name = "🔁 Refresh Daftar NPC",
+	Callback = function()
+		NPCDropdown:Refresh(GetSortedNPCNames())
+		Rayfield:Notify({
+			Title = "Berhasil!",
+			Content = "Daftar NPC di-refresh dari ReplicatedStorage.",
+			Duration = 3,
+		})
+	end
 })
+
 
 
 -- SECTION: TELEPORT KE PLAYER
@@ -644,6 +760,49 @@ TeleportTab:CreateButton({
     end
 })
 
+TeleportTab:CreateSection("📌 Simpan & Teleport ke Posisi Custom")
+local savedCFrame = nil
+TeleportTab:CreateButton({
+   Name = "📌 Simpan Posisi Saat Ini",
+   Callback = function()
+      local char = game.Players.LocalPlayer.Character
+      if char and char:FindFirstChild("HumanoidRootPart") then
+         savedCFrame = char.HumanoidRootPart.CFrame
+         Rayfield:Notify({
+            Title = "Posisi Disimpan",
+            Content = "Posisi berhasil disimpan!",
+            Duration = 3
+         })
+      else
+         Rayfield:Notify({
+            Title = "Gagal Menyimpan",
+            Content = "Karakter atau HRP tidak ditemukan.",
+            Duration = 3
+         })
+      end
+   end
+})
+
+TeleportTab:CreateButton({
+   Name = "🚀 Teleport ke Posisi Tersimpan",
+   Callback = function()
+      local char = game.Players.LocalPlayer.Character
+      if char and char:FindFirstChild("HumanoidRootPart") and savedCFrame then
+         char.HumanoidRootPart.CFrame = savedCFrame
+         Rayfield:Notify({
+            Title = "Teleport Sukses",
+            Content = "Kamu telah kembali ke posisi tersimpan.",
+            Duration = 3
+         })
+      else
+         Rayfield:Notify({
+            Title = "Gagal Teleport",
+            Content = "Posisi belum disimpan atau karakter tidak lengkap.",
+            Duration = 3
+         })
+      end
+   end
+})
 
 
 -- Dropdown teleport ke pulau
