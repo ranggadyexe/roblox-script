@@ -37,82 +37,59 @@ local ServerTab = Window:CreateTab("🌐 Server Tools", 4483362458)
 
 MainTab:CreateSection("🎣 Auto Mancing")
 
-local autoEquipThread = nil
 local autoFishThread = nil
 
--- ✅ Auto Equip Rod
 MainTab:CreateToggle({
-	Name = "🎣 Auto Equip Rod",
-	CurrentValue = false,
-	Flag = "AutoEquip",
-	Callback = function(Value)
-		_G.AutoEquipRod = Value
+    Name = "🔥 Auto Fish (Auto Equip + Instan Hatch)",
+    CurrentValue = false,
+    Flag = "AutoFish",
+    Callback = function(Value)
+        _G.AutoFish = Value
 
-		if not Value then
-			if autoEquipThread then
-				task.cancel(autoEquipThread)
-				autoEquipThread = nil
-			end
-			return
-		end
+        if not Value then
+            -- Matikan thread jika off
+            if autoFishThread then
+                task.cancel(autoFishThread)
+                autoFishThread = nil
+            end
 
-		autoEquipThread = task.spawn(function()
-			while _G.AutoEquipRod do
-				pcall(function()
-					EquipToolRemote:FireServer(1)
-				end)
-				task.wait(1.5)
-			end
-		end)
-	end,
+            -- 🧹 Lepas rod dari tangan jika ada
+            local character = Players.LocalPlayer.Character
+            if character then
+                for _, tool in pairs(character:GetChildren()) do
+                    if tool:IsA("Tool") and tool.Name:lower():find("rod") then
+                        tool.Parent = Players.LocalPlayer.Backpack
+                    end
+                end
+            end
+
+            return
+        end
+
+        autoFishThread = task.spawn(function()
+            while _G.AutoFish do
+                pcall(function()
+                    -- ✅ Auto Equip Rod
+                    EquipToolRemote:FireServer(1)
+                    task.wait(0.5)
+
+                    -- ✅ Auto Cast + Charge + Complete
+                    StartChargeRemote:InvokeServer(-1, 1)
+                    task.wait(0.25)
+
+                    local now = tick()
+                    ChargeRodRemote:InvokeServer(now - 0.14)
+
+                    task.wait(0.3)
+                    CompleteFishingRemote:FireServer()
+                end)
+                task.wait(0.5)
+            end
+        end)
+    end
 })
 
--- ✅ Auto Cast + Charge + Hatch
-MainTab:CreateToggle({
-	Name = "🔥 Auto Fish (Instan Hatch)",
-	CurrentValue = false,
-	Flag = "AutoFish",
-	Callback = function(Value)
-		_G.AutoFish = Value
-
-		if not Value then
-			if autoFishThread then
-				task.cancel(autoFishThread)
-				autoFishThread = nil
-			end
-
-			-- 🧹 Coba lepas rod jika masih ter-equip
-			local character = Players.LocalPlayer.Character
-			if character then
-				for _, tool in pairs(character:GetChildren()) do
-					if tool:IsA("Tool") and tool.Name:lower():find("rod") then
-						tool.Parent = Players.LocalPlayer.Backpack
-					end
-				end
-			end
-
-			return
-		end
-
-		autoFishThread = task.spawn(function()
-			while _G.AutoFish do
-				pcall(function()
-					StartChargeRemote:InvokeServer(-1, 1)
-					task.wait(0.25)
-
-					local now = tick()
-					ChargeRodRemote:InvokeServer(now - 0.14)
-
-					task.wait(0.3)
-					CompleteFishingRemote:FireServer()
-					task.wait(0.3)
-				end)
-				task.wait(0.2)
-			end
-		end)
-	end,
-})
-
+--[[
 -- 🔁 Tombol Reset Tool State
 MainTab:CreateButton({
 	Name = "🔁 Mau Berhenti? Klik ini 3x setelah dapat ikan",
@@ -148,7 +125,7 @@ MainTab:CreateButton({
 			Image = 4483362458,
 		})
 	end,
-})
+})]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
